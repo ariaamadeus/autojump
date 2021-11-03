@@ -1,8 +1,6 @@
 import pyautogui as pyg
 import cv2
 import numpy as np
-from mss import mss
-from PIL import Image
 
 mon = {'left': 0, 'top': 0, 'width': 1000, 'height': 1000}
 sct = mss()
