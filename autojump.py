@@ -1,50 +1,48 @@
 import pyautogui as pyg
 import cv2
 import numpy as np
-
-mon = {'left': 0, 'top': 0, 'width': 1000, 'height': 1000}
-sct = mss()
-
-gameImg = cv2.imread('Tes1.jpeg',cv2.IMREAD_UNCHANGED)
-normalImg = cv2.imread('Normalblock.jpeg',cv2.IMREAD_UNCHANGED)
-trampolineImg = cv2.imread('Trampolineblock.jpeg',cv2.IMREAD_UNCHANGED)
-superImg = cv2.imread('Superblock.jpeg',cv2.IMREAD_UNCHANGED)
+xsave = 0
+ysave = 0
+samecount = 5
+samebuff = samecount
+themin = 0
 while True:
-    sct_img = pyg.screenshot()
-    sct_img = cv2.cvtColor(np.array(sct_img), cv2.COLOR_RGB2BGR)
-    result = cv2.matchTemplate(sct_img,normalImg,cv2.TM_CCOEFF_NORMED)
-    minVal,maxVal,minLoc,maxLoc = cv2.minMaxLoc(result)
-    normW = normalImg.shape[1]
-    normH = normalImg.shape[0]
-    threshold = 0.9
-    yLoc,xLoc = np.where(result >= threshold)
-    rectangles = []
-    lowest = 0
-    count = 0
-    third = 0
-    for (x,y) in zip(xLoc,yLoc):
-        rectangles.append([int(x),int(y),int(normW),int(normH)])
-        rectangles.append([int(x),int(y),int(normW),int(normH)])
-    rectangles, weights = cv2.groupRectangles(rectangles,1,0.2)
-    for (x,y,w,h) in rectangles:
-        if y>lowest and third < 3:
-            lowest = count
-            third+=1
-        count+=1
-        cv2.rectangle(sct_img, (x,y),(x+w,y+h),(0,255,255),2)
-    if len(rectangles) >= 3:
-        x,y,w,h = rectangles[lowest]
-        cv2.rectangle(sct_img, (x,y),(x+w,y+h),(255,0,255),2)
-    cv2.imshow('screen', np.array(sct_img))
+    sct_img1 = pyg.screenshot()
+    sct_img1 = cv2.cvtColor(np.array(sct_img1), cv2.COLOR_RGB2BGR)
+    sct_img = cv2.cvtColor(sct_img1, cv2.COLOR_BGR2HSV)
+    masknorm = cv2.inRange(sct_img, (35,175,111), (43,255,167))
+    masktram = cv2.inRange(sct_img, (86,142,146), (92,255,172))
+    masksups = cv2.inRange(sct_img, (18,227,237), (20,255,255))
+    masktot = masknorm+masktram+masksups
+    cntstot = cv2.findContours(masktot.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+    thetot = []
+    if len(cntstot) > 0:
+        for cnt in cntstot:
+            area = cv2.contourArea(cnt)
+            ((x, y), radius) = cv2.minEnclosingCircle(cnt)
+            if area > 500:
+                thetot.append((int(x),int(y),area))
+    x,y,areaFetch = thetot[0+themin]
+    if xsave > x:
+        xmin = xsave-x
+    else:
+        xmin = x-xsave
+    if ysave >= y:
+        ymin = ysave-y
+    else:
+        ymin = y-ysave
+    if (ymin<3 or xmin<3) and samebuff > 0:
+        print(samebuff)
+        samebuff-=1
+        x,y,areaFetch = thetot[0+themin]
+    elif samebuff == 0:
+        samebuff = samecount
+        themin=1
+        x,y,areaFetch = thetot[0+themin]
+    else:
+        samebuff = samecount
+        themin=0
+        x,y,areaFetch = thetot[0]
+    xsave = x
+    ysave = y
     pyg.moveTo(x,y)
-    if (cv2.waitKey(1) & 0xFF) == ord('q'):
-        cv2.destroyAllWindows()
-        break
-
-
-# cv2.imshow('result',result)
-cv2.imshow('game',gameImg)
-print('show')
-cv2.waitkey()
-print('close')
-cv2.destroyAllwindows()
